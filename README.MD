@@ -4,15 +4,15 @@ Generate one infographic per meaningful section of a Wikipedia article.
 
 The project includes two command-line implementations:
 
-- `wikiinfo.py` generates self-contained SVG infographics with GitHub Copilot CLI.
-- `wikiinfo_copilot.py` generates PNG infographics with the Google Gemini API.
+- `wikiinfo_copilot.py` generates self-contained SVG infographics with GitHub Copilot CLI.
+- `wikiinfo.py` generates PNG infographics with the Google Gemini API.
 
 ## Requirements
 
 - Python 3.10 or newer
 - [`wikipedia-api`](https://pypi.org/project/Wikipedia-API/)
-- [`google-genai`](https://pypi.org/project/google-genai/) for `wikiinfo_copilot.py`
-- An installed and authenticated GitHub Copilot CLI for `wikiinfo.py`
+- [`google-genai`](https://pypi.org/project/google-genai/) for `wikiinfo.py`
+- An installed and authenticated GitHub Copilot CLI for `wikiinfo_copilot.py`
 
 Install the Python dependencies:
 
