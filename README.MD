@@ -31,13 +31,13 @@ export WIKIPEDIA_USER_AGENT="WikiToInfographicBot/1.0 (you@example.com)"
 Generate SVG files:
 
 ```bash
-python wikiinfo.py "Hong Kong"
+python wikiinfo_copilot.py "Hong Kong"
 ```
 
 Useful options:
 
 ```bash
-python wikiinfo.py "Hong Kong" \
+python wikiinfo_copilot.py "Hong Kong" \
   --output-dir infographics-copilot \
   --max-sections 3 \
   --model gpt-5.6-luna
@@ -49,13 +49,13 @@ Set your API key and generate PNG files:
 
 ```bash
 export GEMINI_API_KEY="your-api-key"
-python wikiinfo_copilot.py "Hong Kong"
+python wikiinfo.py "Hong Kong"
 ```
 
 Limit the number of generated sections when testing:
 
 ```bash
-python wikiinfo_copilot.py "Hong Kong" --max-sections 3
+python wikiinfo.py "Hong Kong" --max-sections 3
 ```
 
 Generated files are written beneath a topic-named directory in the selected
