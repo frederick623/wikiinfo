@@ -5,7 +5,10 @@ import subprocess
 from pathlib import Path
 
 import wikipediaapi
+from dotenv import load_dotenv
 
+
+load_dotenv()
 
 DEFAULT_MODEL = "gpt-5.6-luna"
 SKIPPED_SECTIONS = {

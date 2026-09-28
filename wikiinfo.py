@@ -6,7 +6,10 @@ from pathlib import Path
 import wikipediaapi
 from google import genai
 from google.genai import errors, types
+from dotenv import load_dotenv
 
+
+load_dotenv()
 
 TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-3.5-flash")
 IMAGE_MODEL = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image")
