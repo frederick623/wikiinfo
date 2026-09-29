@@ -4,15 +4,14 @@ import re
 from pathlib import Path
 
 import wikipediaapi
+from dotenv import load_dotenv
 from google import genai
 from google.genai import errors, types
-from dotenv import load_dotenv
 
 
 load_dotenv()
 
-TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-3.5-flash")
-IMAGE_MODEL = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image")
+IMAGE_MODEL = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-lite-image")
 SKIPPED_SECTIONS = {
     "See also",
     "Notes",
@@ -43,7 +42,7 @@ def section_text(section) -> str:
 
 
 def fetch_wikipedia_sections(title: str) -> list[tuple[str, str]]:
-    """Fetch the article lead followed by meaningful top-level sections."""
+    """Fetch the complete lead and meaningful top-level article sections."""
     user_agent = os.getenv(
         "WIKIPEDIA_USER_AGENT",
         "WikiToInfographicBot/1.0 (contact@example.com)",
@@ -56,37 +55,33 @@ def fetch_wikipedia_sections(title: str) -> list[tuple[str, str]]:
 
     sections = []
     if page.summary.strip():
-        sections.append((title, page.summary.strip()[:5000]))
+        sections.append((title, page.summary.strip()))
     for section in page.sections:
         text = section_text(section)
         if section.title not in SKIPPED_SECTIONS and text:
-            sections.append((section.title, text[:5000]))
+            sections.append((section.title, text))
 
     if not sections:
         raise ValueError(f"Wikipedia page '{title}' has no usable content.")
     return sections
 
 
-def generate_infographic_prompt(
-    client: genai.Client,
+def build_infographic_prompt(
     article_title: str,
     section_title: str,
     section_content: str,
 ) -> str:
-    """Turn one article section into a focused infographic image prompt."""
-    is_lead = section_title == article_title
+    """Build an image prompt containing the complete Wikipedia section."""
     title_instruction = (
-        f'Keep the exact Wikipedia article title, "{article_title}", visible as '
-        "the infographic's primary and only title."
-        if is_lead
+        f'Keep the exact title "{article_title}" visible as the primary and only title.'
+        if section_title == article_title
         else (
-            f'Keep the exact Wikipedia article title, "{article_title}", visible '
-            "as the infographic's primary title. Use the exact section title as a "
-            "subordinate title."
+            f'Keep the exact article title "{article_title}" visible as the primary '
+            f'title and the exact section title "{section_title}" as a subordinate title.'
         )
     )
-    prompt = f"""
-Create a production-ready image-generation prompt for one standalone infographic.
+    return f"""
+Create a polished standalone infographic from this Wikipedia section.
 
 ARTICLE: {article_title}
 SECTION: {section_title}
@@ -96,25 +91,11 @@ SOURCE TEXT:
 ---
 
 Use only facts supported by the source text. Select at most five key facts so the
-image remains readable. Specify a clear visual hierarchy, relevant imagery or data
-visualization, an eye-catching color palette, Sans Serif font, & large legible typography.
-{title_instruction} Do not mention other article sections. Return only the
-image-generation prompt.
-"""
-
-    response = client.models.generate_content(
-        model=TEXT_MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            temperature=0.3,
-            automatic_function_calling=types.AutomaticFunctionCallingConfig(
-                disable=True
-            ),
-        ),
-    )
-    if not response.text:
-        raise RuntimeError(f"No prompt was generated for section '{section_title}'.")
-    return response.text.strip()
+image remains readable. {title_instruction} Use a clear visual hierarchy,
+relevant imagery or data visualization, an eye-catching color palette, a sans
+serif font, and large legible typography. Do not include citations, URLs, facts
+from other sections, or unsupported claims.
+""".strip()
 
 
 def generate_infographic_image(
@@ -122,7 +103,7 @@ def generate_infographic_image(
     prompt: str,
     output_path: Path,
 ) -> None:
-    """Generate one infographic with the configured Gemini image model."""
+    """Send a complete section directly to the configured image model."""
     response = client.models.generate_content(
         model=IMAGE_MODEL,
         contents=prompt,
@@ -144,7 +125,7 @@ def generate_infographic_image(
 
 
 def safe_filename(value: str) -> str:
-    """Convert a section title to a stable, filesystem-safe filename."""
+    """Convert a title to a stable, filesystem-safe filename."""
     normalized = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return normalized or "section"
 
@@ -154,7 +135,7 @@ def wiki_to_infographics(
     output_directory: Path,
     max_sections: int | None = None,
 ) -> list[Path]:
-    """Generate PNG infographics in a folder named after the Wikipedia topic."""
+    """Generate one WebP infographic directly from each complete section."""
     client = create_client()
     sections = fetch_wikipedia_sections(wiki_title)
     if max_sections is not None:
@@ -165,15 +146,10 @@ def wiki_to_infographics(
     print(f"Found {len(sections)} sections in '{wiki_title}'.")
     for index, (section_title, content) in enumerate(sections, start=1):
         output_path = topic_directory / (
-            f"{index:02d}-{safe_filename(section_title)}.png"
+            f"{index:02d}-{safe_filename(section_title)}.webp"
         )
         print(f"[{index}/{len(sections)}] Generating: {section_title}")
-        prompt = generate_infographic_prompt(
-            client,
-            wiki_title,
-            section_title,
-            content,
-        )
+        prompt = build_infographic_prompt(wiki_title, section_title, content)
         generate_infographic_image(client, prompt, output_path)
         output_paths.append(output_path)
         print(f"Saved: {output_path}")
@@ -183,19 +159,20 @@ def wiki_to_infographics(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Generate one infographic image per Wikipedia section."
+        description="Generate WebP infographics directly from Wikipedia sections."
     )
     parser.add_argument("title", help="Wikipedia article title")
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=Path("infographics"),
-        help="Parent directory for topic-named PNG folders (default: infographics)",
+        help="Parent directory for topic folders (default: infographics)",
     )
     parser.add_argument(
         "--max-sections",
         type=int,
-        help="Generate only the first N sections (useful for testing API access)",
+        default=10,
+        help="Generate only the first N sections (default: 10)",
     )
     return parser.parse_args()
 
@@ -213,9 +190,7 @@ def main() -> None:
             raise
         raise SystemExit(
             "Gemini API access was denied for the project linked to "
-            "GEMINI_API_KEY. Create a new API key in an eligible Google AI "
-            "Studio project, or contact Google support to restore this "
-            "project's access, then update GEMINI_API_KEY."
+            "GEMINI_API_KEY. Use an eligible Google AI Studio project."
         ) from None
 
 

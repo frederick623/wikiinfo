@@ -1,2 +1,7 @@
 .env
 .idea
+__pycache__
+.vscode
+reel
+infographics*
+.DS_Store

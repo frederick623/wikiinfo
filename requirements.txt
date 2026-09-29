@@ -1,3 +1,5 @@
 wikipedia-api
 google-genai
 python-dotenv
+pillow
+CairoSVG
