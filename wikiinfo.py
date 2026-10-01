@@ -1,6 +1,7 @@
 import argparse
 import os
 import re
+import time
 from pathlib import Path
 
 import wikipediaapi
@@ -24,6 +25,8 @@ SKIPPED_SECTIONS = {
     "Further reading",
     "External links",
 }
+
+RETRYABLE_HTTP_CODES = {408, 429, 500, 502, 503, 504}
 
 
 def create_client() -> genai.Client:
@@ -104,24 +107,62 @@ def generate_infographic_image(
     output_path: Path,
 ) -> None:
     """Send a complete section directly to the configured image model."""
-    response = client.models.generate_content(
-        model=IMAGE_MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_modalities=["TEXT", "IMAGE"],
-            image_config=types.ImageConfig(aspect_ratio="3:4"),
-            automatic_function_calling=types.AutomaticFunctionCallingConfig(
-                disable=True
-            ),
-        ),
-    )
+    max_attempts = 4
 
-    for part in response.parts or []:
-        if part.inline_data:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            part.as_image().save(output_path)
-            return
-    raise RuntimeError(f"The image model returned no image for '{output_path.stem}'.")
+    for attempt in range(1, max_attempts + 1):
+        try:
+            response = client.models.generate_content(
+                model=IMAGE_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_modalities=["TEXT", "IMAGE"],
+                    image_config=types.ImageConfig(aspect_ratio="3:4"),
+                    automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                        disable=True
+                    ),
+                ),
+            )
+        except errors.ClientError as error:
+            retryable = error.code in RETRYABLE_HTTP_CODES
+            if not retryable or attempt == max_attempts:
+                raise
+            wait_seconds = 2 ** (attempt - 1)
+            print(
+                f"Gemini request failed with HTTP {error.code}. "
+                f"Retrying in {wait_seconds}s "
+                f"({attempt}/{max_attempts})..."
+            )
+            time.sleep(wait_seconds)
+            continue
+        except Exception as error:
+            if attempt == max_attempts:
+                raise
+            wait_seconds = 2 ** (attempt - 1)
+            print(
+                f"Gemini request failed with {type(error).__name__}. "
+                f"Retrying in {wait_seconds}s "
+                f"({attempt}/{max_attempts})..."
+            )
+            time.sleep(wait_seconds)
+            continue
+
+        for part in response.parts or []:
+            if part.inline_data:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                part.as_image().save(output_path)
+                return
+
+        if attempt == max_attempts:
+            raise RuntimeError(
+                f"The image model returned no image for '{output_path.stem}'."
+            )
+
+        wait_seconds = 2 ** (attempt - 1)
+        print(
+            "The image model returned no image payload. "
+            f"Retrying in {wait_seconds}s ({attempt}/{max_attempts})..."
+        )
+        time.sleep(wait_seconds)
 
 
 def safe_filename(value: str) -> str:
