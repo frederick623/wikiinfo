@@ -5,12 +5,13 @@ import time
 from pathlib import Path
 
 import wikipediaapi
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 from google import genai
 from google.genai import errors, types
 
 
-load_dotenv()
+# Search from the working directory, not site-packages, when installed.
+load_dotenv(find_dotenv(usecwd=True))
 
 IMAGE_MODEL = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-lite-image")
 SKIPPED_SECTIONS = {

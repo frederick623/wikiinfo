@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wikiinfo"
+version = "0.1.0"
+description = "Generate WebP infographics from Wikipedia articles using the Gemini image API."
+readme = "README.MD"
+requires-python = ">=3.10"
+dependencies = [
+    "wikipedia-api",
+    "google-genai",
+    "python-dotenv",
+    "pillow",
+]
+
+[project.scripts]
+wikiinfo = "wikiinfo:main"
+
+[tool.setuptools]
+py-modules = ["wikiinfo"]

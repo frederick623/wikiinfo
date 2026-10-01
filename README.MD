@@ -11,7 +11,13 @@ including text from that section's subsections.
 - A Gemini API key with access to image generation
 - The Python packages listed in `requirements.txt`
 
-Install the dependencies:
+Install directly from GitHub (provides the `wikiinfo` command):
+
+```bash
+python -m pip install git+https://github.com/frederick623/wikiinfo.git
+```
+
+Or, from a local checkout, install the dependencies only:
 
 ```bash
 python -m pip install -r requirements.txt
