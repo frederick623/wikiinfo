@@ -17,6 +17,7 @@ dependencies = [
 
 [project.scripts]
 wikiinfo = "wikiinfo:main"
+wikiinfo-collect = "collect_infographics:main"
 
 [tool.setuptools]
-py-modules = ["wikiinfo"]
+py-modules = ["wikiinfo", "collect_infographics"]

@@ -56,6 +56,24 @@ program skips reference-style sections such as References and External links.
 By default, it processes up to 10 sections and writes `.webp` files under
 `infographics/<article-name>/`. Use `--help` to see the available options.
 
+All sections are sent as a single Gemini Batch API job by default, which costs
+about half as much but returns results with a delay; the program waits and
+polls until the job finishes. Pass `--no-batch` to generate each section with an
+immediate request instead.
+
+To avoid waiting, submit the job and collect the images later:
+
+```bash
+python wikiinfo.py "Apple_Inc." --async            # writes job.json and exits
+python wikiinfo.py --collect                       # saves the images if the job is done
+python collect_infographics.py job.json            # same, as a standalone program
+```
+
+`--async` and `--collect` take an optional file name (default `job.json`); put
+the title before `--async`, or write `--async=FILE`. Collecting exits with
+status 2 while the job is still running, 1 if some images are missing, and 0
+once every image is saved.
+
 Each section's source text is sent directly to the configured Gemini image
 model. The prompt asks the model to use only that text, feature no more than
 five key facts, and create a standalone portrait infographic. Images are named
